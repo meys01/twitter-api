@@ -9,12 +9,28 @@ api = Namespace('tweets')
 json_tweet = api.model('Tweet', {
     'id': fields.Integer,
     'text': fields.String,
-    'created_at': fields.DateTime
+    'created_at': fields.DateTime,
+    'user': fields.Integer
 })
 
 json_new_tweet = api.model('New tweet', {
+    'text': fields.String(required=True),
+    'user': fields.Integer(required=True)
+})
+
+json_update_tweet = api.model('Update tweet', {
     'text': fields.String(required=True)
 })
+
+@api.route('/')
+class TweetResource(Resource):
+    @api.marshal_with(json_tweet)
+    def get(self):
+        tweet = db.session.query(Tweet).all()
+        if tweet is None:
+            api.abort(404, "Tweet {} doesn't exist".format(id))
+        else:
+            return tweet
 
 @api.route('/<int:id>')
 @api.response(404, 'Tweet not found')
@@ -29,7 +45,7 @@ class TweetResource(Resource):
             return tweet
 
     @api.marshal_with(json_tweet, code=200)
-    @api.expect(json_new_tweet, validate=True)
+    @api.expect(json_update_tweet, validate=True)
     def patch(self, id):
         tweet = db.session.query(Tweet).get(id)
         if tweet is None:
@@ -54,8 +70,9 @@ class TweetsResource(Resource):
     @api.expect(json_new_tweet, validate=True)
     def post(self):
         text = api.payload["text"]
+        user = api.payload["user"]
         if len(text) > 0:
-            tweet = Tweet(text=text)
+            tweet = Tweet(text=text, user=user)
             db.session.add(tweet)
             db.session.commit()
             return tweet, 201
